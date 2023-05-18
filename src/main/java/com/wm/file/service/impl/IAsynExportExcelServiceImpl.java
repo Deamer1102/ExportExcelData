@@ -54,11 +54,13 @@ public class IAsynExportExcelServiceImpl implements IAsynExportExcelService {
         int pageSize = (int) map.get("limit");
         List subList = new ArrayList(page(list, pageSize, currentPage));
         int count = subList.size();
-        System.out.println("线程：" + Thread.currentThread().getName() + " , 读取数据，耗时 ：" + (System.currentTimeMillis() - start));
-        String filePath = map.get("path").toString() + map.get("page") + ".xlsx";
+        System.out.println("线程：" + Thread.currentThread().getName() + " , 读取数据，耗时 ：" + (System.currentTimeMillis() - start) + "ms");
+        StringBuilder filePath = new StringBuilder(map.get("path").toString());
+        filePath.append("线程").append(Thread.currentThread().getName()).append("-")
+                .append("页码").append(map.get("page")).append(".xlsx");
         // 调用导出的文件方法
         Workbook workbook = myExcelExportUtil.getWorkbook("计算机一班学生", "学生", MsgClient.class, subList, ExcelType.XSSF);
-        File file = new File(filePath);
+        File file = new File(filePath.toString());
         MyExcelExportUtil.exportExcel2(workbook, file);
         long end = System.currentTimeMillis();
         System.out.println("线程：" + Thread.currentThread().getName() + " , 导出excel" + map.get("page") + ".xlsx成功 , 导出数据：" + count + " ,耗时 ：" + (end - start) + "ms");

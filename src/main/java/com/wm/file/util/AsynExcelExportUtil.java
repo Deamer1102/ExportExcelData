@@ -35,13 +35,9 @@ public class AsynExcelExportUtil {
      * 每批次处理的数据量
      */
     private static final int LIMIT = 40000;
-    // Queue是java自己的队列，是同步安全的
-    public static Queue<Map<String, Object>> queue;
 
-    static {
-        // 一个基于链接节点的无界线程安全的队列
-        queue = new ConcurrentLinkedQueue<>();
-    }
+    // 保证线程安全：每个线程设置本地变量值
+    private static ThreadLocal<Queue<Map<String, Object>>> queueThreadLocal = new ThreadLocal<>();
 
     /**
      * 多线程批量导出 excel
@@ -49,17 +45,18 @@ public class AsynExcelExportUtil {
      * @param response 用于浏览器下载
      * @throws InterruptedException
      */
-    public void threadExcel(HttpServletResponse response) throws InterruptedException {
+    public void threadExcel(HttpServletResponse response) {
         long start = System.currentTimeMillis();
         initQueue();
         //异步转同步，等待所有线程都执行完毕返回 主线程才会结束
         try {
+            Queue<Map<String, Object>> queue = queueThreadLocal.get();
             CountDownLatch cdl = new CountDownLatch(queue.size());
             while (queue.size() > 0) {
                 asynExportExcelService.excuteAsyncTask(queue.poll(), cdl);
             }
             cdl.await();
-            System.out.println("excel导出完成·······················");
+            log.info("excel导出完成·······················");
             //压缩文件
             File zipFile = new File(filePath.substring(0, filePath.length() - 1) + ".zip");
             FileOutputStream fos1 = new FileOutputStream(zipFile);
@@ -68,16 +65,22 @@ public class AsynExcelExportUtil {
             //发送zip包
             ZipUtils.sendZip(response, zipFile);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("excel导出异常", e);
+        } finally {
+            // 使用完ThreadLocal对象之后清除数据，防止内存泄露
+            queueThreadLocal.remove();
         }
         long end = System.currentTimeMillis();
-        System.out.println("任务执行完毕共消耗：  " + (end - start) + "ms");
+        log.info("任务执行完毕共消耗：  " + (end - start) + "ms");
     }
 
     /**
      * 初始化队列
      */
-    public void initQueue() {
+    private void initQueue() {
+        // Queue是java自己的队列，是同步安全的
+        // 一个基于链接节点的无界线程安全的队列
+        Queue<Map<String, Object>> queue = new ConcurrentLinkedQueue<>();
         long dataTotalCount = DATA_TOTAL_COUNT;// 数据的总数
         int listCount = (int) dataTotalCount;
         // 计算出多少页，即循环次数
@@ -90,5 +93,6 @@ public class AsynExcelExportUtil {
             //添加元素
             queue.offer(map);
         }
+        queueThreadLocal.set(queue);
     }
 }
