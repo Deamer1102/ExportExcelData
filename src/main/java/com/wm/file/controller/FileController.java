@@ -1,4 +1,4 @@
-package com.wm.file;
+package com.wm.file.controller;
 
 import cn.afterturn.easypoi.excel.ExcelExportUtil;
 import cn.afterturn.easypoi.excel.entity.ExportParams;
@@ -7,6 +7,7 @@ import cn.afterturn.easypoi.handler.inter.IExcelExportServer;
 import com.wm.file.entity.MsgClient;
 import com.wm.file.util.AsynExcelExportUtil;
 import com.wm.file.util.MyExcelExportUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,6 +26,7 @@ import java.util.List;
  * @Author:Deamer
  * @Date:2020/6/15 22:42
  **/
+@Slf4j
 @RestController
 public class FileController {
 
@@ -35,8 +37,13 @@ public class FileController {
     @Resource
     private AsynExcelExportUtil asynExcelExportUtil;
 
+    /**
+     * 利用CountDownLatch导出数据
+     *
+     * @param response
+     */
     @GetMapping(value = "/asynExport")
-    public void asynExportData(HttpServletResponse response) throws InterruptedException {
+    public void asynExportData(HttpServletResponse response) {
         asynExcelExportUtil.threadExcel(response);
         //1000000-39511ms 100000-7750ms 10000-789ms
     }
@@ -64,10 +71,10 @@ public class FileController {
             File file = new File(filePath);
             MyExcelExportUtil.exportExcel2(workbook, file);
             long end = System.currentTimeMillis();
-            System.out.println("任务执行完毕共消耗：  " + (end - start) + "ms");
+            log.info("任务执行完毕共消耗：  " + (end - start) + "ms");
             //1000000-69407ms  100000-3518ms 10000-1310ms
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("普通数据量导出异常！", e);
         }
     }
 
@@ -83,7 +90,7 @@ public class FileController {
         ExportParams params = new ExportParams("大数据测试", "测试");
         Workbook workbook = ExcelExportUtil.exportBigExcel(params, MsgClient.class, exportBigExcel, new Object());
         MyExcelExportUtil.exportExcel(workbook, String.valueOf(System.currentTimeMillis()), response);
-        System.out.println("bigDataExport:" + (new Date().getTime() - start.getTime()));//10000-bigDataExport:2278 100000-bigDataExport:19083 1000000-bigDataExport:693672
+        log.info("bigDataExport:" + (new Date().getTime() - start.getTime()));//10000-bigDataExport:2278 100000-bigDataExport:19083 1000000-bigDataExport:693672
     }
 
     /**
@@ -108,9 +115,9 @@ public class FileController {
             Date start = new Date();
             Workbook workbook = myExcelExportUtil.getWorkbook("计算机一班学生", "学生", MsgClient.class, list, ExcelType.XSSF);
             MyExcelExportUtil.exportExcel(workbook, String.valueOf(System.currentTimeMillis()), response);
-            System.out.println("export:" + (new Date().getTime() - start.getTime()));//10000-export:1208 100000-export:4516 1000000-export:329188
+            log.info("export:" + (new Date().getTime() - start.getTime()));//10000-export:1208 100000-export:4516 1000000-export:329188
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("普通数据量导出异常！", e);
         }
     }
 }
